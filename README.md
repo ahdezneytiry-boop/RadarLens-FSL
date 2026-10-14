@@ -5,9 +5,7 @@
 ![Last Commit](https://img.shields.io/github/last-commit/ahdezneytiry-boop/RadarLens-FSL)
 ![Repo Size](https://img.shields.io/github/repo-size/ahdezneytiry-boop/RadarLens-FSL)
 
-雷达 + 视觉融合的少样本异常行为识别算法（EMA-FSL），2026 年中国大学生计算机设计大赛参赛作品。
-
-对"行为数据少、异常样本更难收集"的场景，用**多模态融合 + 少样本学习**识别异常行为：雷达信号与视觉图像两条支路联合建模，支持合成数据冒烟测试与真实数据两种模式。
+面向"行为数据少、异常样本更难收集"场景的多模态异常行为识别系统：融合雷达信号与视觉图像两条支路，采用少样本学习（FSL）策略，支持合成数据冒烟测试与真实数据两种模式，并提供 ONNX / TensorRT 部署与 Web 演示界面。
 
 ## 目录结构
 
@@ -37,7 +35,6 @@ python EMA-FSL/train.py --data-root data --epochs 10 --checkpoint checkpoints/mo
 ## 说明
 
 - 出于隐私与体积考虑，训练数据、演示视频未包含在本仓库。
-- 原始作品中的个人署名已替换为 GitHub 用户名。
 
 ## 许可证
 

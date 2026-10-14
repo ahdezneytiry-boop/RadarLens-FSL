@@ -91,4 +91,4 @@ yolo classify val model=runs/fall_yolo_cls/le2i_sisfall_binary/weights/best.pt d
 
 ## 使用建议
 
-论文或答辩中建议将该结果表述为“YOLO11n 基线与参考实验”。如果展示检测指标，必须说明标注方式为前景轮廓弱框，不能描述成人工标注的人体框数据集。
+报告或演示中建议将该结果表述为“YOLO11n 基线与参考实验”。如果展示检测指标，必须说明标注方式为前景轮廓弱框，不能描述成人工标注的人体框数据集。
