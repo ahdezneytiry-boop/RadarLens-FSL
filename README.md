@@ -1,5 +1,10 @@
 # RadarLens-FSL · 多模态少样本异常行为识别
 
+![License](https://img.shields.io/github/license/ahdezneytiry-boop/RadarLens-FSL)
+![Top Language](https://img.shields.io/github/languages/top/ahdezneytiry-boop/RadarLens-FSL)
+![Last Commit](https://img.shields.io/github/last-commit/ahdezneytiry-boop/RadarLens-FSL)
+![Repo Size](https://img.shields.io/github/repo-size/ahdezneytiry-boop/RadarLens-FSL)
+
 雷达 + 视觉融合的少样本异常行为识别算法（EMA-FSL），2026 年中国大学生计算机设计大赛参赛作品。
 
 对"行为数据少、异常样本更难收集"的场景，用**多模态融合 + 少样本学习**识别异常行为：雷达信号与视觉图像两条支路联合建模，支持合成数据冒烟测试与真实数据两种模式。
