@@ -1,0 +1,16 @@
+YOLO 二分类数据集
+类别映射：异常 = Fall + Lie + Likefall；正常 = Stand；Blank 已剔除
+划分策略：片段级划分，随机种子 20260623
+来源：YifeiYang210/Fall_Detection_dataset 中的 Le2i-processed 与 SisFall-processed
+
+[训练集]
+异常：144 个片段，2311 张图片
+正常：65 个片段，1040 张图片
+
+[验证集]
+异常：31 个片段，494 张图片
+正常：13 个片段，208 张图片
+
+[测试集]
+异常：32 个片段，513 张图片
+正常：15 个片段，240 张图片

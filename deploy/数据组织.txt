@@ -1,0 +1,17 @@
+data/
+├── label.csv
+├── radar/
+│   ├── sample_001.npy
+│   └── sample_002.npy
+└── visual/
+    ├── sample_001/
+    │   ├── 0001.jpg
+    │   └── 0002.jpg
+    └── sample_002/
+        ├── 0001.jpg
+        └── 0002.jpg
+
+说明：
+1. label.csv 至少包含 id,label 两列。
+2. radar/<id>.npy 为二维数组，形状建议为 (T, D)，训练脚本会裁剪或补齐到 30 帧、16 维。
+3. visual/<id>/ 下放置该样本的视频帧图片，训练脚本会读取前 30 帧并缩放为 64x64。

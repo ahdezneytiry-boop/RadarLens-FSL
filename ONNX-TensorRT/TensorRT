@@ -1,0 +1,8 @@
+安装：
+pip install tensorrt
+
+转换（命令行）
+trtexec --onnx=ema_fsl.onnx --saveEngine=ema_fsl.engine
+
+Python推理
+print("TensorRT 引擎加载成功（示意）")

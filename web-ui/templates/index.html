@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>EMA-FSL边缘侧行为监测指挥系统</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <style>
+        :root { --accent: #00f2ff; --bg: #05070a; --panel: rgba(16, 22, 30, 0.95); --border: rgba(0, 242, 255, 0.3); }
+        body { background: var(--bg); color: #e0e0e0; font-family: 'Inter', 'Segoe UI', sans-serif; margin: 0; overflow: hidden; letter-spacing: 0.5px; }
+        
+        /* 顶部装饰条 */
+        .top-nav { height: 65px; background: linear-gradient(180deg, rgba(0,242,255,0.1) 0%, transparent 100%); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 30px; }
+        .glitch-text { font-weight: 900; color: var(--accent); text-transform: uppercase; letter-spacing: 3px; font-size: 1.4rem; text-shadow: 0 0 15px rgba(0,242,255,0.4); }
+
+        /* 布局面板 */
+        .dashboard-grid { display: grid; grid-template-columns: 350px 1fr 380px; gap: 20px; padding: 20px; height: calc(100vh - 65px); }
+        .glass-panel { background: var(--panel); border: 1px solid var(--border); position: relative; padding: 20px; box-shadow: inset 0 0 20px rgba(0,242,255,0.05); }
+        .panel-header { font-size: 0.8rem; color: var(--accent); opacity: 0.8; border-bottom: 1px solid #222; margin-bottom: 20px; padding-bottom: 8px; display: flex; justify-content: space-between; }
+        
+        /* 数据可视化细节 */
+        .stat-item { margin-bottom: 25px; }
+        .stat-label { font-size: 0.7rem; color: #888; text-transform: uppercase; margin-bottom: 5px; }
+        .stat-value { font-family: 'Courier New', monospace; font-size: 1.6rem; font-weight: bold; color: #fff; }
+        .unit { font-size: 0.8rem; color: var(--accent); margin-left: 5px; }
+
+        /* 视觉显示区 */
+        #vision-container { height: 450px; background: #000; border-radius: 4px; position: relative; border: 1px solid #1a1a1a; overflow: hidden; }
+        #camera-video { width: 100%; height: 100%; object-fit: cover; filter: contrast(110%) brightness(90%); opacity: 0.8; }
+        .overlay-mask { position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0px, rgba(0,0,0,0) 2px); pointer-events: none; }
+        .target-box { position: absolute; border: 2px solid var(--accent); top: 20%; left: 30%; width: 40%; height: 50%; display: none; box-shadow: 0 0 20px var(--accent); }
+        .target-box::before { content: "TARGET_LOCKED"; position: absolute; top: -20px; left: 0; background: var(--accent); color: #000; font-size: 10px; padding: 2px 5px; }
+
+        /* 审计日志区 */
+        .audit-scroll { height: 520px; overflow-y: hidden; font-family: 'Consolas', monospace; font-size: 0.75rem; color: #777; }
+        .audit-line { padding: 10px; border-bottom: 1px solid #1a1a1a; transition: 0.3s; }
+        .audit-line:hover { background: rgba(255,255,255,0.02); }
+        .crit { color: #ff4757; background: rgba(255,71,87,0.05); border-left: 3px solid #ff4757; }
+        .info { border-left: 3px solid var(--accent); }
+        
+        /* 底部状态 */
+        .footer-metrics { display: flex; gap: 40px; margin-top: 20px; background: #0a0e14; padding: 15px; border: 1px solid #1a1a1a; }
+    </style>
+</head>
+<body>
+
+<div class="top-nav justify-content-between">
+    <div class="d-flex align-items-center">
+        <span class="glitch-text">EMA-FSL 0.924_STABLE</span>
+        <div class="ms-4 px-3 py-1" style="background: rgba(0,242,255,0.1); border: 1px solid var(--accent); font-size: 0.7rem;">
+            ASYNCHRONOUS ENGINE ACTIVE
+        </div>
+    </div>
+    <div class="d-flex gap-5 align-items-center">
+        <div class="text-end"><div class="stat-label">System Time</div><div id="clock" class="text-white">--:--:--</div></div>
+        <div class="text-end"><div class="stat-label">Edge Node</div><div class="text-white">ARM_CORTEX_A55</div></div>
+        <button class="btn btn-sm btn-outline-info" onclick="triggerSystem()">MANUAL_TRIGGER</button>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="glass-panel">
+        <div class="panel-header"><span>RADAR_TELEMETRY</span><span>24GHZ_MMWAVE</span></div>
+        <div class="stat-item">
+            <div class="stat-label">Relative Velocity Vector</div>
+            <div class="stat-value" id="v-val">0.000<span class="unit">m/s</span></div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">Radial Distance Signal</div>
+            <div class="stat-value" id="d-val">0.00<span class="unit">m</span></div>
+        </div>
+        <div id="radar-wave" style="height: 200px; width: 100%;"></div>
+        <div class="mt-4">
+            <div class="stat-label">Signal-to-Noise Ratio</div>
+            <div class="progress" style="height: 3px; background: #111;">
+                <div id="rssi-bar" class="progress-bar bg-info" style="width: 70%"></div>
+            </div>
+        </div>
+    </div>
+
+    <div>
+        <div class="glass-panel mb-3">
+            <div class="panel-header"><span>VISION_ASYNCHRONOUS_FEED</span><span id="pwr-tag" class="text-success">LOW_POWER_MODE</span></div>
+            <div id="vision-container">
+                <div class="overlay-mask"></div>
+                <video id="v-stream" autoplay playsinline style="display: none;"></video>
+                <div id="target-box" class="target-box"></div>
+                <div id="idle-msg" class="h-100 d-flex flex-column align-items-center justify-content-center">
+                    <div class="spinner-border text-dark mb-3" style="width: 3rem; height: 3rem;"></div>
+                    <div style="color: #444; font-size: 0.9rem;">SENSOR_SLEEP: WAITING FOR RADAR TRIGGER</div>
+                </div>
+            </div>
+            <div class="footer-metrics">
+                <div><div class="stat-label">Dynamic Power</div><div id="pwr-val" class="text-success fw-bold">0.185 W</div></div>
+                <div><div class="stat-label">Model Latency</div><div class="text-info fw-bold">6.8ms</div></div>
+                <div><div class="stat-label">Inference Mode</div><div class="text-white fw-bold">CNN-TCN-INT8</div></div>
+                <div class="ms-auto text-end"><div class="stat-label">Detection Status</div><div id="det-res" class="text-secondary fw-bold">STANDBY</div></div>
+            </div>
+        </div>
+        <div class="glass-panel" style="padding: 15px;">
+            <div class="row text-center">
+                <div class="col-4">
+                    <div class="stat-label">CPU_Load</div><div id="cpu-val" class="text-info">15%</div>
+                </div>
+                <div class="col-4 border-start border-secondary">
+                    <div class="stat-label">Core_Temp</div><div id="temp-val" class="text-warning">42.5°C</div>
+                </div>
+                <div class="col-4 border-start border-secondary">
+                    <div class="stat-label">Memory_Usage</div><div class="text-white">214MB</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass-panel">
+        <div class="panel-header"><span>SYSTEM_AUDIT_LOGS</span><span>REALTIME_TRACE</span></div>
+        <div class="audit-scroll" id="audit-box"></div>
+        <div class="mt-4 p-3" style="background: #0d1117; border: 1px dashed #30363d; font-size: 0.7rem; color: #8b949e;">
+            <strong>Protocol Guide #5:</strong> 异步模式下，当雷达矢量位移偏移量 Δd > 0.45m 时，必须在 15ms 内无条件唤醒视觉精判分支。
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. 初始化雷达实时图表
+    const radarChart = echarts.init(document.getElementById('radar-wave'), 'dark');
+    let radarData = [];
+    const radarOpt = {
+        backgroundColor: 'transparent',
+        grid: { top: 10, left: 10, right: 10, bottom: 10 },
+        xAxis: { type: 'category', show: false },
+        yAxis: { type: 'value', show: false, max: 0.5 },
+        series: [{ type: 'line', data: [], smooth: true, symbol: 'none', areaStyle: { color: 'rgba(0, 242, 255, 0.1)' }, lineStyle: { color: '#00f2ff', width: 1 } }]
+    };
+    radarChart.setOption(radarOpt);
+
+    // 2. 监听后端数据流
+    const sse = new EventSource('/stream_telemetry');
+    sse.onmessage = (e) => {
+        const d = JSON.parse(e.data);
+        document.getElementById('clock').innerText = d.timestamp;
+        document.getElementById('v-val').innerHTML = `${d.radar.v_vector}<span class="unit">m/s</span>`;
+        document.getElementById('d-val').innerHTML = `${d.radar.d_vector}<span class="unit">m</span>`;
+        document.getElementById('cpu-val').innerText = d.hardware.cpu_util + '%';
+        document.getElementById('temp-val').innerText = d.hardware.temp + '°C';
+        document.getElementById('pwr-val').innerText = d.hardware.power_w + ' W';
+        
+        radarData.push(d.radar.v_vector);
+        if(radarData.length > 25) radarData.shift();
+        radarChart.setOption({ series: [{ data: radarData }] });
+    };
+
+    // 3. 核心触发逻辑
+    async function triggerSystem() {
+        pushLog("雷达检测到目标切向加速度异常 [Threshold_Exceeded]", "info");
+        const video = document.getElementById('v-stream');
+        const idle = document.getElementById('idle-msg');
+        const pwrTag = document.getElementById('pwr-tag');
+        const tBox = document.getElementById('target-box');
+
+        // 视觉切换活跃态
+        idle.style.display = 'none';
+        video.style.display = 'block';
+        pwrTag.innerText = "HIGH_COMPUTE_MODE";
+        pwrTag.className = "text-danger";
+        document.getElementById('pwr-val').className = "text-danger fw-bold";
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            setTimeout(() => tBox.style.display = 'block', 500);
+        } catch(err) {
+            pushLog("视觉链路硬件初始化异常，采用预设特征流", "crit");
+        }
+
+        // 模拟 AI 推理
+        fetch('/invoke_vision_inference', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('det-res').innerText = data.type;
+                document.getElementById('det-res').className = data.class === 'CRITICAL' ? "text-danger fw-bold" : "text-info fw-bold";
+                pushLog(`[${data.type}] - ${data.description} (Conf: ${data.confidence})`, data.class.toLowerCase());
+
+                // 异步回归逻辑
+                setTimeout(() => {
+                    if(video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
+                    video.style.display = 'none';
+                    idle.style.display = 'flex';
+                    tBox.style.display = 'none';
+                    pwrTag.innerText = "LOW_POWER_MODE";
+                    pwrTag.className = "text-success";
+                    document.getElementById('pwr-val').className = "text-success fw-bold";
+                    document.getElementById('det-res').innerText = "STANDBY";
+                    pushLog("任务处理完毕，视觉分支进入异步节能状态", "info");
+                }, 4500);
+            });
+    }
+
+    function pushLog(msg, type) {
+        const box = document.getElementById('audit-box');
+        const time = new Date().toLocaleTimeString();
+        const line = `<div class="audit-line ${type}">[${time}] SYSTEM_STUB: ${msg}</div>`;
+        box.innerHTML = line + box.innerHTML;
+    }
+
+    window.onload = () => pushLog("EMA-FSL 核心引擎引导成功，边缘节点接入就绪", "info");
+</script>
+</body>
+</html>
